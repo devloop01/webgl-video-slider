@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Webgl Video Slider</title>
+    <link rel="stylesheet" href="src/style.css" />
+  </head>
+  <body>
+    <video loop crossorigin="anonymous" playsinline muted style="display: none">
+      <!-- <source src="textures/sintel.ogv" type='video/ogg; codecs="theora, vorbis"'> -->
+      <source src="/vid1.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"' />
+    </video>
+
+    <video loop crossorigin="anonymous" playsinline muted style="display: none">
+      <!-- <source src="textures/sintel.ogv" type='video/ogg; codecs="theora, vorbis"'> -->
+      <source src="/vid2.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"' />
+    </video>
+
+    <div class="controls">
+      <button class="btn btn--prev">prev</button>
+      <button class="btn btn--next">next</button>
+    </div>
+
+    <canvas class="webgl"></canvas>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
