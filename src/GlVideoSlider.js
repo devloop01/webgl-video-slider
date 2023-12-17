@@ -16,54 +16,65 @@ export class GlVideoSlider {
     this.screen = screen;
     this.viewport = viewport;
 
-    this.currentTime = 0;
-
     this.videos = [...document.querySelectorAll("video")];
-    this.currentIndex = 0;
+    this.currentSlideIndex = 0;
 
     this.videoTextures = [];
 
     this.isAnimating = false;
+
+    this.divs = 5;
 
     this.init();
     this.onResize();
   }
 
   init() {
-    this.videos.forEach((video) => {
-      video.play();
-      video.addEventListener("play", () => {
-        video.currentTime = 3;
-      });
-    });
+    this.initVideos();
+    this.initVideoTextures();
 
-    this.videoTextures = this.videos.map((video) => {
-      const texture = new VideoTexture(video);
-      texture.colorSpace = SRGBColorSpace;
-      return texture;
-    });
-
-    this.currentTex = this.videoTextures[this.currentIndex];
-    this.nextTex = this.videoTextures[this.currentIndex + 1];
-
-    this.divs = 5;
     this.offsets = new Array(this.divs).fill(null).map(() => ({ value: 0 }));
 
-    const mat = planeMat.clone();
-    mat.uniforms = {
-      uTexture0: { value: this.currentTex },
+    this.currentTexture = this.currentVideoTexture();
+    this.nextTexture = this.nextVideoTexture();
+
+    this.planeGeometry = planeGeo.clone();
+    this.planeMaterial = planeMat.clone();
+
+    this.planeMaterial.uniforms = {
+      uTexture0: { value: this.currentTexture },
       uTextureSize0: {
         value: [this.currentVideo().videoWidth, this.currentVideo().videoHeight],
       },
-      uTexture1: { value: this.nextTex },
-      uTextureSize1: { value: [0, 0] },
+      uTexture1: { value: this.nextTexture },
+      uTextureSize1: { value: [this.nextVideo().videoWidth, this.nextVideo().videoHeight] },
       uPlaneSize: { value: [0, 0] },
       uDivs: { value: this.divs },
-      uOffsets: { value: [] },
+      uOffsets: { value: this.offsets.map((o) => o.value) },
+      uChromaticStrength: { value: 0 },
     };
 
-    this.mesh = new Mesh(planeGeo, mat);
+    this.mesh = new Mesh(this.planeGeometry, this.planeMaterial);
     this.scene.add(this.mesh);
+  }
+
+  initVideos() {
+    this.videos.forEach((video, index) => {
+      video.play();
+
+      video.addEventListener("ended", () => {
+        if (this.currentSlideIndex === index) this.nextSlide();
+      });
+    });
+  }
+
+  initVideoTextures() {
+    this.videoTextures = this.videos.map((video) => {
+      const texture = new VideoTexture(video);
+      texture.colorSpace = SRGBColorSpace;
+      texture.generateMipmaps = false;
+      return texture;
+    });
   }
 
   onResize({ viewport } = {}) {
@@ -73,121 +84,204 @@ export class GlVideoSlider {
       this.mesh.scale.y = this.viewport.height;
     }
 
-    this.mesh.material.uniforms.uPlaneSize.value = [this.mesh.scale.x, this.mesh.scale.y];
+    this.planeMaterial.uniforms.uPlaneSize.value = [this.mesh.scale.x, this.mesh.scale.y];
   }
 
-  update({ time } = {}) {
-    if (time) this.currentTime = time;
-    // this.mesh.material.uniforms.uTime.value = this.currentTime;
-
-    this.mesh.material.uniforms.uOffsets.value = this.offsets.map((o) => o.value);
+  update() {
+    this.planeMaterial.uniforms.uOffsets.value = this.offsets.map((o) => o.value);
   }
 
-  next() {
+  resetOffsets() {
+    this.offsets.forEach((offset) => {
+      gsap.set(offset, { value: 0 });
+    });
+  }
+
+  nextSlide() {
     if (this.isAnimating) return;
 
-    const tl = gsap.timeline({
-      paused: true,
-      onStart: () => {
-        this.isAnimating = true;
-      },
-      onComplete: () => {
-        this.isAnimating = false;
-        this.currentIndex = this.nextIndex();
+    this.staggerOffsetsTo(
+      -1,
+      {},
+      {
+        onStart: () => {
+          this.isAnimating = true;
+          this.nextVideo().play();
+        },
+        onComplete: () => {
+          this.isAnimating = false;
 
-        this.currentTex = this.videoTextures[this.currentIndex];
-        this.nextTex = this.videoTextures[this.nextIndex()];
+          this.currentSlideIndex = this.nextIndex();
+          this.currentTexture = this.currentVideoTexture();
+          this.nextTexture = this.nextVideoTexture();
 
-        this.mesh.material.uniforms.uTexture0.value = this.currentTex;
-        this.mesh.material.uniforms.uTexture1.value = this.nextTex;
+          this.planeMaterial.uniforms.uTexture0.value = this.currentTexture;
+          this.planeMaterial.uniforms.uTexture1.value = this.nextTexture;
 
-        this.mesh.material.uniforms.uTextureSize0.value = [
-          this.currentVideo().videoWidth,
-          this.currentVideo().videoHeight,
-        ];
-        this.mesh.material.uniforms.uTextureSize1.value = [
-          this.nextVideo().videoWidth,
-          this.nextVideo().videoHeight,
-        ];
+          this.planeMaterial.uniforms.uTextureSize0.value = [
+            this.currentVideo().videoWidth,
+            this.currentVideo().videoHeight,
+          ];
+          this.planeMaterial.uniforms.uTextureSize1.value = [
+            this.nextVideo().videoWidth,
+            this.nextVideo().videoHeight,
+          ];
 
-        this.offsets.forEach((offset) => {
-          gsap.set(offset, { value: 0 });
-        });
-      },
-    });
-
-    tl.to(this.offsets, {
-      value: -1,
-      duration: 1,
-      ease: "power4.inOut",
-      stagger: -0.05,
-    });
-
-    tl.play();
+          this.resetOffsets();
+        },
+      }
+    );
   }
 
-  prev() {
+  showNextSlide() {
     if (this.isAnimating) return;
 
-    const tl = gsap.timeline({
-      paused: true,
-      onStart: () => {
-        this.isAnimating = true;
-      },
-      onComplete: () => {
-        this.isAnimating = false;
-        this.currentIndex = this.prevIndex();
-
-        this.currentTex = this.videoTextures[this.currentIndex];
-        this.nextTex = this.videoTextures[this.prevIndex()];
-
-        this.mesh.material.uniforms.uTexture0.value = this.currentTex;
-        this.mesh.material.uniforms.uTexture1.value = this.nextTex;
-
-        this.mesh.material.uniforms.uTextureSize0.value = [
-          this.currentVideo().videoWidth,
-          this.currentVideo().videoHeight,
-        ];
-        this.mesh.material.uniforms.uTextureSize1.value = [
-          this.prevVideo().videoWidth,
-          this.prevVideo().videoHeight,
-        ];
-
-        this.offsets.forEach((offset) => {
-          gsap.set(offset, { value: 0 });
-        });
-      },
-    });
-
-    tl.to(this.offsets, {
-      value: -1,
-      duration: 1,
-      ease: "power4.inOut",
-      stagger: 0.05,
-    });
-
-    tl.play();
+    this.staggerOffsetsTo(
+      -0.15,
+      { duration: 0.5 },
+      {
+        onStart: () => {
+          this.nextVideo().currentTime = 0;
+          this.nextVideo().play();
+        },
+      }
+    );
   }
 
-  staggerOffsetsTo(v, options) {
-    const tl = gsap.timeline({ paused: true, ...options });
+  hideNextSlide() {
+    if (this.isAnimating) return;
+
+    this.staggerOffsetsTo(
+      0,
+      { duration: 0.5, stagger: 0.05 },
+      {
+        onStart: () => {},
+      }
+    );
+  }
+
+  prevSlide() {
+    if (this.isAnimating) return;
+
+    this.staggerOffsetsTo(
+      -1,
+      { stagger: 0.05 },
+      {
+        onStart: () => {
+          this.isAnimating = true;
+          this.prevVideo().play();
+        },
+        onComplete: () => {
+          this.isAnimating = false;
+
+          this.currentSlideIndex = this.prevIndex();
+
+          this.currentTexture = this.currentVideoTexture();
+          this.nextTexture = this.prevVideoTexture();
+
+          this.planeMaterial.uniforms.uTexture0.value = this.currentTexture;
+          this.planeMaterial.uniforms.uTexture1.value = this.nextTexture;
+
+          this.planeMaterial.uniforms.uTextureSize0.value = [
+            this.currentVideo().videoWidth,
+            this.currentVideo().videoHeight,
+          ];
+          this.planeMaterial.uniforms.uTextureSize1.value = [
+            this.prevVideo().videoWidth,
+            this.prevVideo().videoHeight,
+          ];
+
+          this.resetOffsets();
+        },
+      }
+    );
+  }
+
+  showPrevSlide() {
+    if (this.isAnimating) return;
+
+    this.staggerOffsetsTo(
+      -0.15,
+      { duration: 0.5, stagger: 0.05 },
+      {
+        onStart: () => {
+          this.prevVideo().currentTime = 0;
+          this.prevVideo().play();
+        },
+      }
+    );
+  }
+
+  hidePrevSlide() {
+    if (this.isAnimating) return;
+
+    this.staggerOffsetsTo(
+      0,
+      { duration: 0.5, stagger: -0.05 },
+      {
+        onStart: () => {},
+      }
+    );
+  }
+
+  staggerOffsetsTo(value, options = {}, tlOptions = {}) {
+    const tl = gsap.timeline({ paused: true, ...tlOptions });
+
+    const duration = options.duration || 0.7;
+
+    tl.to(this.offsets, {
+      value,
+      duration,
+      ease: options.ease || "power4.inOut",
+      stagger: options.stagger || -0.05,
+      overwrite: true,
+    });
+
+    tl.to(
+      this.planeMaterial.uniforms.uChromaticStrength,
+      {
+        value: 1,
+        duration: 0.5,
+        ease: "power2.inOut",
+      },
+      0.1
+    );
+
+    tl.to(
+      this.planeMaterial.uniforms.uChromaticStrength,
+      {
+        value: 0,
+        duration: 0.5,
+        ease: "power2.inOut",
+      },
+      duration - 0.1
+    );
+
     tl.play();
   }
 
   nextIndex() {
-    return (this.currentIndex + 1) % this.videos.length;
+    return (this.currentSlideIndex + 1) % this.videos.length;
   }
 
   prevIndex() {
-    return (this.currentIndex - 1 + this.videos.length) % this.videos.length;
+    return (this.currentSlideIndex - 1 + this.videos.length) % this.videos.length;
   }
 
   currentVideo() {
-    return this.videos[this.currentIndex];
+    return this.videos[this.currentSlideIndex];
   }
 
   currentVideoTexture() {
-    return this.videoTextures[this.currentIndex];
+    return this.videoTextures[this.currentSlideIndex];
+  }
+
+  nextVideoTexture() {
+    return this.videoTextures[this.nextIndex()];
+  }
+
+  prevVideoTexture() {
+    return this.videoTextures[this.prevIndex()];
   }
 
   nextVideo() {

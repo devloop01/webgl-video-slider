@@ -11,6 +11,7 @@ uniform vec2 uTextureSize1;
 uniform vec2 uPlaneSize;
 uniform float uDivs;
 uniform float uOffsets[5];
+uniform float uChromaticStrength;
 
 vec2 backgroundCoverUv(vec2 screenSize, vec2 imageSize, vec2 uv) {
     float screenRatio = screenSize.x / screenSize.y;
@@ -20,13 +21,13 @@ vec2 backgroundCoverUv(vec2 screenSize, vec2 imageSize, vec2 uv) {
     return uv * screenSize / newSize + newOffset;
 }
 
-float expoInOut(float t) {
-    return t == 0.0 || t == 1.0 ? t : t < 0.5 ? +0.5 * pow(2.0, (20.0 * t) - 10.0) : -0.5 * pow(2.0, 10.0 - (t * 20.0)) + 1.0;
+vec3 chromaticAberration(sampler2D tex, vec2 uv) {
+    float offset = 0.01;
+    return vec3(texture2D(tex, uv + vec2(0.0, offset)).r, texture2D(tex, uv).g, texture2D(tex, uv - vec2(0.0, offset)).b);
 }
 
 void main() {
     vec2 uv = vUv;
-    vec2 uv0 = vUv;
 
     int index = int(floor(vUv.x * uDivs));
 
@@ -39,21 +40,16 @@ void main() {
 
     float offseted = uv.y + offset;
 
-    vec2 texUv0 = uv;
-    vec2 texUv1 = uv;
+    vec2 texUv0 = backgroundCoverUv(uPlaneSize, uTextureSize0, uv);
+    vec2 texUv1 = backgroundCoverUv(uPlaneSize, uTextureSize1, uv);
 
-    texUv0 = backgroundCoverUv(uPlaneSize, uTextureSize0, texUv0);
-    texUv1 = backgroundCoverUv(uPlaneSize, uTextureSize1, texUv1);
-
-    vec3 tex0 = texture2D(uTexture0, texUv0).rgb;
-    tex0 = texture2D(uTexture0, vec2(uv.x, offseted)).rgb;
-    vec3 tex1 = texture2D(uTexture1, texUv1).rgb;
-    tex1 = texture2D(uTexture1, vec2(uv.x, 1.0 + offseted)).rgb;
+    vec3 tex0 = mix(texture2D(uTexture0, vec2(texUv0.x, offseted)).rgb, chromaticAberration(uTexture0, vec2(texUv0.x, offseted)).rgb, uChromaticStrength);
+    vec3 tex1 = mix(texture2D(uTexture1, vec2(texUv1.x, 1.0 + offseted)).rgb, chromaticAberration(uTexture1, vec2(texUv1.x, 1.0 + offseted)).rgb, uChromaticStrength);
 
     vec3 tex = mix(tex1, tex0, step(0.0, offseted));
 
     vec3 col = vec3(0.0);
-    col = mix(tex, col, 1. - step(0.01, fract(uv0.x * uDivs)));
+    col = mix(tex, col, 1. - step(0.0075, fract(uv.x * uDivs)));
 
     // col = vec3(step(0.0, offseted));
 

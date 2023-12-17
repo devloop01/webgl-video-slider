@@ -27,6 +27,7 @@ export class App {
     this.initCursors();
     this.initGl();
     this.initGlVideoSlider();
+    this.initSliderControls();
     this.onResize();
     this.addEventListeners();
     this.render();
@@ -59,19 +60,13 @@ export class App {
       screen: this.screen,
       viewport: this.viewport,
     });
+  }
 
+  initSliderControls() {
     this.videoSliderControls = {
       prev: document.querySelector(".btn--prev"),
       next: document.querySelector(".btn--next"),
     };
-
-    this.videoSliderControls.prev.addEventListener("click", () => {
-      this.videoSlider.prev();
-    });
-
-    this.videoSliderControls.next.addEventListener("click", () => {
-      this.videoSlider.next();
-    });
   }
 
   render() {
@@ -134,15 +129,35 @@ export class App {
     this.cursors.lg.updateTargetOpacity(0);
   }
 
-  onMouseOver(e) {
-    if (e.target instanceof HTMLButtonElement) {
-      this.cursors.sm.updateTargetScale(4);
-      this.cursors.lg.updateTargetScale(1.5);
-      this.cursors.lg.updateTargetOpacity(0);
+  onConrolsClick(e) {
+    if (e.target.classList.contains("btn--next")) {
+      this.videoSlider.nextSlide();
     } else {
-      this.cursors.sm.updateTargetScale(1);
-      this.cursors.lg.updateTargetScale(1);
-      this.cursors.lg.updateTargetOpacity(1);
+      this.videoSlider.prevSlide();
+    }
+  }
+
+  onConrolsMouseEnter(e) {
+    this.cursors.sm.updateTargetScale(4);
+    this.cursors.lg.updateTargetScale(1.5);
+    this.cursors.lg.updateTargetOpacity(0);
+
+    if (e.target.classList.contains("btn--next")) {
+      this.videoSlider.showNextSlide();
+    } else {
+      this.videoSlider.showPrevSlide();
+    }
+  }
+
+  onConrolsMouseLeave(e) {
+    this.cursors.sm.updateTargetScale(1);
+    this.cursors.lg.updateTargetScale(1);
+    this.cursors.lg.updateTargetOpacity(1);
+
+    if (e.target.classList.contains("btn--next")) {
+      this.videoSlider.hideNextSlide();
+    } else {
+      this.videoSlider.hidePrevSlide();
     }
   }
 
@@ -151,7 +166,27 @@ export class App {
     window.addEventListener("mousemove", this.onMouseMove.bind(this));
     document.addEventListener("mouseenter", this.onMouseEnter.bind(this));
     document.addEventListener("mouseleave", this.onMouseLeave.bind(this));
-    window.addEventListener("mouseover", this.onMouseOver.bind(this));
+
+    // controls
+    this.videoSliderControls.prev.addEventListener("click", this.onConrolsClick.bind(this));
+    this.videoSliderControls.next.addEventListener("click", this.onConrolsClick.bind(this));
+
+    this.videoSliderControls.prev.addEventListener(
+      "mouseenter",
+      this.onConrolsMouseEnter.bind(this)
+    );
+    this.videoSliderControls.next.addEventListener(
+      "mouseenter",
+      this.onConrolsMouseEnter.bind(this)
+    );
+    this.videoSliderControls.prev.addEventListener(
+      "mouseleave",
+      this.onConrolsMouseLeave.bind(this)
+    );
+    this.videoSliderControls.next.addEventListener(
+      "mouseleave",
+      this.onConrolsMouseLeave.bind(this)
+    );
   }
 
   calculateViewport() {
