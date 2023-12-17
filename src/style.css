@@ -19,28 +19,59 @@ canvas.webgl {
   z-index: -1;
 }
 
+button {
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+}
+
 .controls {
   position: absolute;
   z-index: 999;
-  bottom: 0;
+  top: 50%;
   right: 0;
-  padding: 1rem;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  transform: translateY(-50%);
+  padding: 0 2rem;
 
-  & button {
-    background: none;
-    border: none;
-    outline: none;
-    cursor: pointer;
+  & .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 1rem;
     color: #fff;
-    font-size: 1.5rem;
-    text-transform: uppercase;
     transition: all 0.3s ease;
-    border: 1px solid #fff;
+    border-radius: 50%;
 
-    &:hover {
-      color: #000;
-      background: #fff;
+    & svg {
+      width: 3rem;
+      height: 3rem;
+      pointer-events: none;
     }
   }
+}
+
+.cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 999;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) translate3d(var(--cursor-x), var(--cursor-y), 0)
+    scale(var(--cursor-scale));
+  opacity: var(--cursor-opacity);
+
+  mix-blend-mode: difference;
+
+  stroke: #fff;
+  fill: none;
+  pointer-events: none;
+}
+
+.cursor.cursor--sm {
+  stroke: none;
+  fill: #fff;
 }

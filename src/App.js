@@ -1,6 +1,7 @@
 import { WebGLRenderer, PerspectiveCamera, Scene, Clock } from "three";
 import Stats from "stats-gl";
 import { GlVideoSlider } from "./GlVideoSlider";
+import { Cursor } from "./Cursor";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -23,12 +24,20 @@ export class App {
     document.body.appendChild(this.stats.dom);
 
     // sleep(import.meta.env.DEV ? 10 : 1000).then(() => {
+    this.initCursors();
     this.initGl();
     this.initGlVideoSlider();
     this.onResize();
     this.addEventListeners();
     this.render();
     // });
+  }
+
+  initCursors() {
+    this.cursors = {
+      sm: new Cursor(document.querySelector(".cursor--sm"), 0.3),
+      lg: new Cursor(document.querySelector(".cursor--lg"), 0.12),
+    };
   }
 
   initGl() {
@@ -75,6 +84,9 @@ export class App {
         time: this.clock.getElapsedTime(),
       });
 
+      this.cursors.sm.update();
+      this.cursors.lg.update();
+
       this.stats.update();
       this.renderer.render(this.scene, this.camera);
     };
@@ -104,8 +116,42 @@ export class App {
     }
   }
 
+  onMouseMove(e) {
+    const x = e.clientX;
+    const y = e.clientY;
+
+    this.cursors.sm.updateTargetPosition(x, y);
+    this.cursors.lg.updateTargetPosition(x, y);
+  }
+
+  onMouseEnter() {
+    this.cursors.sm.updateTargetOpacity(1);
+    this.cursors.lg.updateTargetOpacity(1);
+  }
+
+  onMouseLeave() {
+    this.cursors.sm.updateTargetOpacity(0);
+    this.cursors.lg.updateTargetOpacity(0);
+  }
+
+  onMouseOver(e) {
+    if (e.target instanceof HTMLButtonElement) {
+      this.cursors.sm.updateTargetScale(4);
+      this.cursors.lg.updateTargetScale(1.5);
+      this.cursors.lg.updateTargetOpacity(0);
+    } else {
+      this.cursors.sm.updateTargetScale(1);
+      this.cursors.lg.updateTargetScale(1);
+      this.cursors.lg.updateTargetOpacity(1);
+    }
+  }
+
   addEventListeners() {
     window.addEventListener("resize", this.onResize.bind(this));
+    window.addEventListener("mousemove", this.onMouseMove.bind(this));
+    document.addEventListener("mouseenter", this.onMouseEnter.bind(this));
+    document.addEventListener("mouseleave", this.onMouseLeave.bind(this));
+    window.addEventListener("mouseover", this.onMouseOver.bind(this));
   }
 
   calculateViewport() {
