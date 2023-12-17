@@ -35,18 +35,18 @@ export class GlVideoSlider {
 
     this.offsets = new Array(this.divs).fill(null).map(() => ({ value: 0 }));
 
-    this.currentTexture = this.currentVideoTexture();
-    this.nextTexture = this.nextVideoTexture();
+    this.texture0 = this.currentVideoTexture();
+    this.texture1 = this.nextVideoTexture();
 
     this.planeGeometry = planeGeo.clone();
     this.planeMaterial = planeMat.clone();
 
     this.planeMaterial.uniforms = {
-      uTexture0: { value: this.currentTexture },
+      uTexture0: { value: this.texture0 },
       uTextureSize0: {
         value: [this.currentVideo().videoWidth, this.currentVideo().videoHeight],
       },
-      uTexture1: { value: this.nextTexture },
+      uTexture1: { value: this.texture1 },
       uTextureSize1: { value: [this.nextVideo().videoWidth, this.nextVideo().videoHeight] },
       uPlaneSize: { value: [0, 0] },
       uDivs: { value: this.divs },
@@ -112,11 +112,11 @@ export class GlVideoSlider {
           this.isAnimating = false;
 
           this.currentSlideIndex = this.nextIndex();
-          this.currentTexture = this.currentVideoTexture();
-          this.nextTexture = this.nextVideoTexture();
+          this.texture0 = this.currentVideoTexture();
+          this.texture1 = this.nextVideoTexture();
 
-          this.planeMaterial.uniforms.uTexture0.value = this.currentTexture;
-          this.planeMaterial.uniforms.uTexture1.value = this.nextTexture;
+          this.planeMaterial.uniforms.uTexture0.value = this.texture0;
+          this.planeMaterial.uniforms.uTexture1.value = this.texture1;
 
           this.planeMaterial.uniforms.uTextureSize0.value = [
             this.currentVideo().videoWidth,
@@ -143,6 +143,8 @@ export class GlVideoSlider {
         onStart: () => {
           this.nextVideo().currentTime = 0;
           this.nextVideo().play();
+          this.texture1 = this.nextVideoTexture();
+          this.planeMaterial.uniforms.uTexture1.value = this.texture1;
         },
       }
     );
@@ -176,11 +178,11 @@ export class GlVideoSlider {
 
           this.currentSlideIndex = this.prevIndex();
 
-          this.currentTexture = this.currentVideoTexture();
-          this.nextTexture = this.prevVideoTexture();
+          this.texture0 = this.currentVideoTexture();
+          this.texture1 = this.prevVideoTexture();
 
-          this.planeMaterial.uniforms.uTexture0.value = this.currentTexture;
-          this.planeMaterial.uniforms.uTexture1.value = this.nextTexture;
+          this.planeMaterial.uniforms.uTexture0.value = this.texture0;
+          this.planeMaterial.uniforms.uTexture1.value = this.texture1;
 
           this.planeMaterial.uniforms.uTextureSize0.value = [
             this.currentVideo().videoWidth,
@@ -207,6 +209,9 @@ export class GlVideoSlider {
         onStart: () => {
           this.prevVideo().currentTime = 0;
           this.prevVideo().play();
+
+          this.texture1 = this.prevVideoTexture();
+          this.planeMaterial.uniforms.uTexture1.value = this.texture1;
         },
       }
     );
